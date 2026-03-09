@@ -1,35 +1,50 @@
 const express = require('express');
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(express.json()); // Support complex data
 
-app.use(express.text());
+let accounts = {}; // Our "Big Book" of accounts
 
-let balances = {}; 
-let pins = {};
+app.post('/bank/action', (req, res) => {
+    const { secret, action, user, target, value } = req.body;
+    if (secret !== "MY_SUPER_SECRET_123") return res.status(403).send("Unauthorized");
 
-// --- ADD THIS SECTION TO FIX THE "CANNOT GET /" ERROR ---
-app.get('/', (req, res) => {
-    res.send("🏦 EMARI Bank Server is Online and Active.");
-});
-// -------------------------------------------------------
-
-app.post('/bank', (req, res) => {
-    const data = req.body.split('|');
-    const [secret, action, user, value] = data;
-
-    if (secret !== "MY_SUPER_SECRET_123") return res.status(403).send("Wrong Secret");
-
-    if (action === "GET_USER") {
-        res.send(`${balances[user] || 0}|${pins[user] || "NONE"}`);
-    } 
-    else if (action === "SET_BAL") {
-        balances[user] = value;
-        res.send("SUCCESS");
+    // Initialize account if new
+    if (!accounts[user]) {
+        accounts[user] = { balance: 0, savings: 0, pin: "NONE", linked: [], kin: "NONE", logs: [], isKid: false };
     }
-    else if (action === "SET_PIN") {
-        pins[user] = value;
-        res.send("SUCCESS");
+
+    let acc = accounts[user];
+
+    switch(action) {
+        case "GET_ALL":
+            res.json(acc);
+            break;
+
+        case "ADD_LINK": // Add user to card
+            acc.linked.push(target);
+            acc.logs.push(`Added linked user: ${target}`);
+            res.send("User Linked");
+            break;
+
+        case "XFER_SAVINGS": // Move to savings
+            let amt = parseInt(value);
+            if(acc.balance >= amt) {
+                acc.balance -= amt;
+                acc.savings += amt;
+                acc.logs.push(`Saved L$${amt}`);
+                res.send("Saved");
+            } else res.status(400).send("No Funds");
+            break;
+
+        case "GET_LOGS":
+            res.send(acc.logs.slice(-5).join("\n")); // Send last 5 actions
+            break;
+            
+        case "SET_KIN":
+            acc.kin = target;
+            res.send("Next of Kin Updated");
+            break;
     }
 });
 
-app.listen(port, () => console.log(`Bank active on port ${port}`));
+app.listen(process.env.PORT || 3000);
