@@ -4,11 +4,14 @@ const port = process.env.PORT || 3000;
 
 app.use(express.text());
 
-// This is your temporary database (In-memory)
-// NOTE: Free Tier resets memory if the service sleeps. 
-// For permanent storage, you'd later link a free MongoDB or Disk.
 let balances = {}; 
 let pins = {};
+
+// --- ADD THIS SECTION TO FIX THE "CANNOT GET /" ERROR ---
+app.get('/', (req, res) => {
+    res.send("🏦 EMARI Bank Server is Online and Active.");
+});
+// -------------------------------------------------------
 
 app.post('/bank', (req, res) => {
     const data = req.body.split('|');
