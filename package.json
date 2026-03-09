@@ -1,12 +1,13 @@
 {
-  "UUID": {
-    "balance": 1000,
-    "savings": 500,
-    "pin": "1234",
-    "card_issued": true,
-    "linked_users": ["UUID_2", "UUID_3"],
-    "next_of_kin": "UUID_4",
-    "is_kids_account": false,
-    "logs": ["Dep L$500 03/09", "With L$100 03/10"]
+  "name": "emari-mega-bank",
+  "version": "1.0.0",
+  "description": "Grid-wide Banking with Persistence",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.18.2",
+    "canvas": "^2.11.2"
+  },
+  "scripts": {
+    "start": "node index.js"
   }
 }
