@@ -4,8 +4,8 @@ const port = process.env.PORT || 3000;
 
 app.use(express.text());
 
-// The "Big Ledger" - Stores everything in one place
-let database = {}; 
+// Central Database Object
+let accounts = {}; 
 
 app.post('/bank', (req, res) => {
     const data = req.body.split('|');
@@ -13,49 +13,62 @@ app.post('/bank', (req, res) => {
 
     if (secret !== "MY_SUPER_SECRET_123") return res.status(403).send("Unauthorized");
 
-    // Create account if it doesn't exist
-    if (!database[user]) {
-        database[user] = { checking: 0, savings: 0, pin: "NONE", kin: "None Set" };
+    // Initialize user if they don't exist
+    if (!accounts[user]) {
+        accounts[user] = { checking: 0, savings: 0, pin: "NONE", kin: "None Set" };
     }
 
-    let acc = database[user];
+    let acc = accounts[user];
 
-    if (action === "GET_ACCOUNT") {
-        // Returns: Checking|Savings|PIN|Kin
-        res.send(`${acc.checking}|${acc.savings}|${acc.pin}|${acc.kin}`);
-    } 
-    else if (action === "DEPOSIT") {
-        acc.checking += parseInt(value);
-        res.send("SUCCESS");
-    }
-    else if (action === "SET_PIN") {
-        acc.pin = value;
-        res.send("SUCCESS");
-    }
-    else if (action === "TO_SAVINGS") {
-        let amount = parseInt(value);
-        if (acc.checking >= amount) {
-            acc.checking -= amount;
-            acc.savings += amount;
+    switch (action) {
+        case "GET_ACCOUNT":
+            res.send(`${acc.checking}|${acc.savings}|${acc.pin}|${acc.kin}`);
+            break;
+
+        case "DEPOSIT":
+            acc.checking += parseInt(value);
             res.send("SUCCESS");
-        } else {
-            res.send("INSUFFICIENT");
-        }
-    }
-    else if (action === "FROM_SAVINGS") {
-        let amount = parseInt(value);
-        if (acc.savings >= amount) {
-            acc.savings -= amount;
-            acc.checking += amount;
+            break;
+
+        case "SET_PIN":
+            acc.pin = value;
             res.send("SUCCESS");
-        } else {
-            res.send("INSUFFICIENT");
-        }
-    }
-    else if (action === "SET_KIN") {
-        acc.kin = value; // 'value' will be the name or UUID of the Kin
-        res.send("SUCCESS");
+            break;
+
+        case "SET_KIN":
+            acc.kin = value;
+            res.send("SUCCESS");
+            break;
+
+        case "TO_SAVINGS": // Move Current -> Savings
+            let toSave = parseInt(value);
+            if (acc.checking >= toSave) {
+                acc.checking -= toSave;
+                acc.savings += toSave;
+                res.send("SUCCESS");
+            } else res.send("INSUFFICIENT");
+            break;
+
+        case "FROM_SAVINGS": // Move Savings -> Current
+            let fromSave = parseInt(value);
+            if (acc.savings >= fromSave) {
+                acc.savings -= fromSave;
+                acc.checking += fromSave;
+                res.send("SUCCESS");
+            } else res.send("INSUFFICIENT");
+            break;
+
+        case "WITHDRAW": // Direct L$ Withdrawal from Current
+            let withdrawAmt = parseInt(value);
+            if (acc.checking >= withdrawAmt) {
+                acc.checking -= withdrawAmt;
+                res.send("SUCCESS");
+            } else res.send("INSUFFICIENT");
+            break;
+
+        default:
+            res.send("UNKNOWN_ACTION");
     }
 });
 
-app.listen(port, () => console.log(`Mega Bank Phase A Active`));
+app.listen(port, () => console.log(`EMARI Mega Bank: Phase A Online`));
