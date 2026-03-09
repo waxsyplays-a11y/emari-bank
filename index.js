@@ -1,50 +1,61 @@
 const express = require('express');
 const app = express();
-app.use(express.json()); // Support complex data
+const port = process.env.PORT || 3000;
 
-let accounts = {}; // Our "Big Book" of accounts
+app.use(express.text());
 
-app.post('/bank/action', (req, res) => {
-    const { secret, action, user, target, value } = req.body;
+// The "Big Ledger" - Stores everything in one place
+let database = {}; 
+
+app.post('/bank', (req, res) => {
+    const data = req.body.split('|');
+    const [secret, action, user, value, extra] = data;
+
     if (secret !== "MY_SUPER_SECRET_123") return res.status(403).send("Unauthorized");
 
-    // Initialize account if new
-    if (!accounts[user]) {
-        accounts[user] = { balance: 0, savings: 0, pin: "NONE", linked: [], kin: "NONE", logs: [], isKid: false };
+    // Create account if it doesn't exist
+    if (!database[user]) {
+        database[user] = { checking: 0, savings: 0, pin: "NONE", kin: "None Set" };
     }
 
-    let acc = accounts[user];
+    let acc = database[user];
 
-    switch(action) {
-        case "GET_ALL":
-            res.json(acc);
-            break;
-
-        case "ADD_LINK": // Add user to card
-            acc.linked.push(target);
-            acc.logs.push(`Added linked user: ${target}`);
-            res.send("User Linked");
-            break;
-
-        case "XFER_SAVINGS": // Move to savings
-            let amt = parseInt(value);
-            if(acc.balance >= amt) {
-                acc.balance -= amt;
-                acc.savings += amt;
-                acc.logs.push(`Saved L$${amt}`);
-                res.send("Saved");
-            } else res.status(400).send("No Funds");
-            break;
-
-        case "GET_LOGS":
-            res.send(acc.logs.slice(-5).join("\n")); // Send last 5 actions
-            break;
-            
-        case "SET_KIN":
-            acc.kin = target;
-            res.send("Next of Kin Updated");
-            break;
+    if (action === "GET_ACCOUNT") {
+        // Returns: Checking|Savings|PIN|Kin
+        res.send(`${acc.checking}|${acc.savings}|${acc.pin}|${acc.kin}`);
+    } 
+    else if (action === "DEPOSIT") {
+        acc.checking += parseInt(value);
+        res.send("SUCCESS");
+    }
+    else if (action === "SET_PIN") {
+        acc.pin = value;
+        res.send("SUCCESS");
+    }
+    else if (action === "TO_SAVINGS") {
+        let amount = parseInt(value);
+        if (acc.checking >= amount) {
+            acc.checking -= amount;
+            acc.savings += amount;
+            res.send("SUCCESS");
+        } else {
+            res.send("INSUFFICIENT");
+        }
+    }
+    else if (action === "FROM_SAVINGS") {
+        let amount = parseInt(value);
+        if (acc.savings >= amount) {
+            acc.savings -= amount;
+            acc.checking += amount;
+            res.send("SUCCESS");
+        } else {
+            res.send("INSUFFICIENT");
+        }
+    }
+    else if (action === "SET_KIN") {
+        acc.kin = value; // 'value' will be the name or UUID of the Kin
+        res.send("SUCCESS");
     }
 });
 
-app.listen(process.env.PORT || 3000);
+app.listen(port, () => console.log(`Mega Bank Phase A Active`));
